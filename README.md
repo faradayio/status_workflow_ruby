@@ -1,34 +1,47 @@
 # StatusWorkflow
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/status_workflow`. To experiment with that code, run `bin/console` for an interactive prompt.
+Basic state machine using Redis for locking.
 
-TODO: Delete this and the text above, and describe your gem
-
-## Installation
-
-Add this line to your application's Gemfile:
-
-```ruby
-gem 'status_workflow'
+```
+require 'redis'
+StatusWorkflow.redis = Redis.new
 ```
 
-And then execute:
+Expects but does not require ActiveRecord (you just have to respond to `#reload`, `#id`, and `#update_columns`)
 
-    $ bundle
+```
+class Pet < ActiveRecord::Base
+  before_create do
+    self.status ||= 'sleep'
+  end
+  include StatusWorkflow
+  status_workflow(
+    sleep: [:fed],
+    fed: [:sleep, :run],
+    run: [:sleep],
+  )
+end
+```
 
-Or install it yourself as:
+where
 
-    $ gem install status_workflow
+```
+    sleep: [:fed],
+    fed: [:sleep, :run],
+    run: [:sleep],
+```
 
-## Usage
+means:
 
-TODO: Write usage instructions here
+* from sleep, i can go to fed
+* from fed, i can go to sleep or run
+* from run, i can go to sleep
 
-## Development
+## Sponsor
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+<p><a href="https://www.faraday.io"><img src="https://s3.amazonaws.com/faraday-assets/files/img/logo.svg" alt="Faraday logo"/></a></p>
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+We use [`status_workflow`](https://github.com/faradayio/status_workflow_ruby) for [B2C customer lifecycle optimization at Faraday](https://www.faraday.io).
 
 ## Contributing
 
@@ -41,3 +54,7 @@ The gem is available as open source under the terms of the [MIT License](https:/
 ## Code of Conduct
 
 Everyone interacting in the StatusWorkflow project’s codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/status_workflow/blob/master/CODE_OF_CONDUCT.md).
+
+## Copyright
+
+Copyright 2018 Faraday
