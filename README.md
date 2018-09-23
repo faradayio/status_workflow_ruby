@@ -1,5 +1,7 @@
 # StatusWorkflow
 
+[![Build Status](https://travis-ci.org/faradayio/status_workflow_ruby.svg?branch=master)](https://travis-ci.org/faradayio/status_workflow_ruby)
+
 Basic state machine using Redis for locking.
 
 ```
