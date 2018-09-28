@@ -2,7 +2,8 @@ ActiveRecord::Base.connection.execute <<-SQL
   CREATE TABLE pets (
     id serial primary key,
     status text,
-    status_changed_at timestamp without time zone
+    status_changed_at timestamp without time zone,
+    error text
   )
 SQL
 class Pet < ActiveRecord::Base
@@ -33,6 +34,16 @@ RSpec.describe StatusWorkflow do
       expect{pet.enter_run_if_possible}.not_to raise_error
       expect(pet.status).to eq('sleep')
     end
+    it "can set error on block" do
+      expect {
+        pet.enter_fed! do
+          raise "nyet"
+        end
+      }.to raise_error(/nyet/)
+      pet.reload
+      expect(pet.error).to match(/RuntimeError.*nyet/)
+      expect(pet.status).to eq('error')
+    end
     it "can do the whole routine" do
       expect{
         pet.enter_fed!
@@ -42,17 +53,34 @@ RSpec.describe StatusWorkflow do
       }.not_to raise_error
     end
     it "has locking" do
-      pet1 = Pet.first
-      pet2 = Pet.first
+      copy1 = Pet.first
+      copy2 = Pet.first
       t1 = Thread.new do
-        pet1.enter_fed!
+        copy1.enter_fed!
       end
       t2 = Thread.new do
-        pet2.enter_fed!
+        copy2.enter_fed!
       end
       t1_succeeded = begin; t1.join; true; rescue; false; end
       t2_succeeded = begin; t2.join; true; rescue; false; end
       expect(t1_succeeded ^ t2_succeeded).to be_truthy
+    end
+    it "has heartbeat" do
+      copy1 = Pet.first
+      copy2 = Pet.first
+      t1 = Thread.new do
+        copy1.enter_fed! do
+          sleep 5
+        end
+      end
+      t2 = Thread.new do
+        sleep 0.5
+        copy2.enter_fed!
+      end
+      t1_succeeded = begin; t1.join; true; rescue; false; end
+      t2_succeeded = begin; t2.join; true; rescue; false; end
+      expect(t1_succeeded).to be_truthy
+      expect(t2_succeeded).to be_falsey
     end
   end
 end
