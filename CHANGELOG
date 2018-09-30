@@ -1,3 +1,13 @@
+2.0.0 / 2018-09-30
+
+Breaking changes
+
+  * Get rid of block form on enter_X!
+
+Enhancements
+
+  * Add `status_transition!(intermediate_status, final_status)`
+
 1.0.1 / 2018-09-28
 
 Enhancements
