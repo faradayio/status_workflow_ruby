@@ -1,3 +1,13 @@
+3.0.0 / 2018-10-24
+
+Breaking changes
+
+  * error -> status_error column name
+
+Enhancements
+
+  * status_workflow(alt: { a: [:b] }) if you want to use alt_status
+
 2.0.0 / 2018-09-30
 
 Breaking changes

@@ -3,7 +3,10 @@ ActiveRecord::Base.connection.execute <<-SQL
     id serial primary key,
     status text,
     status_changed_at timestamp without time zone,
-    error text
+    status_error text,
+    alt_status text,
+    alt_status_changed_at timestamp without time zone,
+    alt_status_error text
   )
 SQL
 class Pet < ActiveRecord::Base
@@ -16,6 +19,45 @@ class Pet < ActiveRecord::Base
     feeding: [:fed],
     fed: [:sleep, :run],
     run: [:sleep],
+  )
+end
+
+class PetAlt < ActiveRecord::Base
+  self.table_name = 'pets'
+  before_create do
+    self.alt_status ||= 'sleep'
+  end
+  include StatusWorkflow
+  status_workflow(
+    alt: {
+      sleep: [:feeding],
+      feeding: [:fed],
+      fed: [:sleep, :run],
+      run: [:sleep],
+    }
+  )
+end
+
+class PetBoth < ActiveRecord::Base
+  self.table_name = 'pets'
+  before_create do
+    self.status ||= 'sleep'
+    self.alt_status ||= 'sleep2'
+  end
+  include StatusWorkflow
+  status_workflow(
+    nil => {
+      sleep: [:feeding],
+      feeding: [:fed],
+      fed: [:sleep, :run],
+      run: [:sleep],
+    },
+    alt: {
+      sleep2: [:feeding2],
+      feeding2: [:fed2],
+      fed2: [:sleep2, :run2],
+      run2: [:sleep2],
+    }
   )
 end
 
@@ -41,9 +83,9 @@ RSpec.describe StatusWorkflow do
     it "can set an intermediate status with block" do
       expect(pet.status).to eq('sleep')
       pet.status_transition!(:feeding, :fed) do
-        expect expect(pet.status).to eq('feeding')
+        expect(pet.status).to eq('feeding')
       end
-      expect expect(pet.status).to eq('fed')
+      expect(pet.status).to eq('fed')
     end
     it "can set error on block" do
       expect {
@@ -52,7 +94,7 @@ RSpec.describe StatusWorkflow do
         end
       }.to raise_error(/nyet/)
       pet.reload
-      expect(pet.error).to match(/RuntimeError.*nyet/)
+      expect(pet.status_error).to match(/RuntimeError.*nyet/)
       expect(pet.status).to eq('error')
     end
     it "can do the whole routine" do
@@ -95,4 +137,60 @@ RSpec.describe StatusWorkflow do
       expect(t2_succeeded).to be_falsey
     end
   end
+  describe "alternate column" do
+    let(:pet) { PetAlt.create! }
+    it "can use an alternate status column" do
+      expect(pet.alt_status).to eq('sleep')
+      pet.alt_status_transition!(:feeding, :fed) do
+        expect(pet.alt_status).to eq('feeding')
+      end
+      expect(pet.alt_status).to eq('fed')
+      expect(pet.alt_status_changed_at).not_to be_nil
+      expect(pet.status).to be_nil
+    end
+    it "can set alternate error" do
+      expect {
+        pet.alt_status_transition!(:feeding, :fed) do
+          raise "nyet"
+        end
+      }.to raise_error(/nyet/)
+      pet.reload
+      expect(pet.alt_status_error).to match(/RuntimeError.*nyet/)
+      expect(pet.alt_status_changed_at).not_to be_nil
+      expect(pet.alt_status).to eq('error')
+      expect(pet.status).to be_nil
+    end
+  end
+  describe "2 columns" do
+    let(:pet) { PetBoth.create! }
+    it "can use an alternate status column" do
+      expect(pet.status).to eq('sleep')
+      expect(pet.alt_status).to eq('sleep2')
+      pet.status_transition!(:feeding, :fed) do
+        expect(pet.status).to eq('feeding')
+        expect(pet.alt_status).to eq('sleep2')
+      end
+      expect(pet.status).to eq('fed')
+      expect(pet.alt_status).to eq('sleep2')
+      pet.alt_status_transition!(:feeding2, :fed2) do
+        expect(pet.status).to eq('fed')
+        expect(pet.alt_status).to eq('feeding2')
+      end
+    end
+    it "uses different locks" do
+      pet.status_transition!(:feeding, :fed) do
+        expect(pet.status).to eq('feeding')
+        expect(pet.alt_status).to eq('sleep2')
+        pet.alt_status_transition!(:feeding2, :fed2) do
+          expect(pet.status).to eq('feeding')
+          expect(pet.alt_status).to eq('feeding2')
+        end
+        expect(pet.status).to eq('feeding')
+        expect(pet.alt_status).to eq('fed2')
+      end
+      expect(pet.status).to eq('fed')
+      expect(pet.alt_status).to eq('fed2')
+    end
+  end
+
 end

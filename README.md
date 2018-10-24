@@ -4,10 +4,14 @@
 
 Basic state machine using Redis for locking.
 
+## Usage
+
 ```
 require 'redis'
 StatusWorkflow.redis = Redis.new
 ```
+
+You need an object that has `status`, `status_changed_at`, and `status_error`.
 
 Expects but does not require ActiveRecord (you just have to respond to `#reload`, `#id`, and `#update_columns`)
 
@@ -38,6 +42,28 @@ means:
 * from sleep, i can go to fed
 * from fed, i can go to sleep or run
 * from run, i can go to sleep
+
+If you want >1 status, you do
+
+```
+  include StatusWorkflow
+  status_workflow(
+    nil => {
+      sleep: [:feeding],
+      feeding: [:fed],
+      fed: [:sleep, :run],
+      run: [:sleep],
+    },
+    alt: {
+      sleep2: [:feeding2],
+      feeding2: [:fed2],
+      fed2: [:sleep2, :run2],
+      run2: [:sleep2],
+    }
+  )
+```
+
+You need an object that has `alt_status`, `alt_status_changed_at`, and `alt_status_error`.
 
 ## Sponsor
 
