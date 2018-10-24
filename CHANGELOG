@@ -1,3 +1,13 @@
+3.0.1 / 2018-10-24
+
+Enhancements
+
+  * Always allow entering error
+
+Bug fixes
+
+  * Don't fail if transition map is specified as strings
+
 3.0.0 / 2018-10-24
 
 Breaking changes

@@ -96,10 +96,16 @@ module StatusWorkflow
         end
         transitions.inject({}) do |memo, (from_status, to_statuses)|
           to_statuses.each do |to_status|
+            to_status = to_status.to_sym
             memo[to_status] ||= Set.new
-            memo[to_status] << from_status
+            memo[to_status] << from_status.to_sym
           end
           memo
+        end.tap do |to_from|
+          to_from[:error] = Set.new
+          to_from.each do |to_status, from_statuses|
+            to_from[:error].merge from_statuses
+          end
         end.each do |to_status, from_statuses|
           define_method "#{prefix_}enter_#{to_status}!" do
             send "#{prefix_}status_transition!", nil, to_status
