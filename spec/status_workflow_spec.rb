@@ -91,6 +91,12 @@ RSpec.describe StatusWorkflow do
       end
       expect(pet.status).to eq('fed')
     end
+    it "returns the result of the block" do
+      result = pet.status_transition!(:feeding, :fed) do
+        123
+      end
+      expect(result).to eq(123)
+    end
     it "can set error on block" do
       expect {
         pet.status_transition!(:feeding, :fed) do
@@ -99,7 +105,7 @@ RSpec.describe StatusWorkflow do
       }.to raise_error(/nyet/)
       pet.reload
       expect(pet.status_error).to match(/RuntimeError.*nyet/)
-      expect(pet.status).to eq('error')
+      expect(pet.status).to eq('feeding_error')
     end
     it "can do the whole routine" do
       expect{
@@ -161,7 +167,7 @@ RSpec.describe StatusWorkflow do
       pet.reload
       expect(pet.alt_status_error).to match(/RuntimeError.*nyet/)
       expect(pet.alt_status_changed_at).not_to be_nil
-      expect(pet.alt_status).to eq('error')
+      expect(pet.alt_status).to eq('feeding_error')
       expect(pet.status).to be_nil
     end
   end

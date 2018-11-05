@@ -23,6 +23,7 @@ module StatusWorkflow
   LOCK_CHECK_RATE = 0.2
 
   def status_transition!(intermediate_to_status, final_to_status, prefix = nil)
+    result = nil # what the block yields, return to the user
     intermediate_to_status = intermediate_to_status&.to_s
     final_to_status = final_to_status&.to_s
     prefix_ = prefix ? "#{prefix}_" : nil
@@ -58,11 +59,12 @@ module StatusWorkflow
               sleep LOCK_EXPIRY/2.0
             end
           end
-          yield
+          result = yield
         rescue
           # If the block errors, set status to error and record the backtrace
           error = (["#{$!.class} #{$!.message}"] + $!.backtrace).join("\n")
-          update_columns status_column => 'error', status_changed_at_column => Time.now, error_column => error
+          status = read_attribute status_column
+          update_columns status_column => "#{status}_error", status_changed_at_column => Time.now, error_column => error
           raise
         end
       end
@@ -77,7 +79,7 @@ module StatusWorkflow
       StatusWorkflow.redis.del lock_key
       heartbeat.kill if heartbeat
     end
-    true
+    result
   end
 
   module ClassMethods

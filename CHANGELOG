@@ -1,3 +1,10 @@
+3.0.2 / 2018-11-05
+
+Enhancements
+
+  * Prefix error status with previous status
+  * Return the result of the block from status_transition!
+
 3.0.1 / 2018-10-24
 
 Enhancements
