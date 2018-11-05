@@ -24,6 +24,7 @@ module StatusWorkflow
 
   def status_transition!(intermediate_to_status, final_to_status, prefix = nil)
     result = nil # what the block yields, return to the user
+    before_status_transition = self.class.instance_variable_get(:@before_status_transition)
     intermediate_to_status = intermediate_to_status&.to_s
     final_to_status = final_to_status&.to_s
     prefix_ = prefix ? "#{prefix}_" : nil
@@ -60,9 +61,11 @@ module StatusWorkflow
             end
           end
           result = yield
+          before_status_transition&.call
         rescue
           # If the block errors, set status to error and record the backtrace
           error = (["#{$!.class} #{$!.message}"] + $!.backtrace).join("\n")
+          before_status_transition&.call
           status = read_attribute status_column
           update_columns status_column => "#{status}_error", status_changed_at_column => Time.now, error_column => error
           raise
@@ -83,6 +86,9 @@ module StatusWorkflow
   end
 
   module ClassMethods
+    def before_status_transition(&blk)
+      @before_status_transition = blk
+    end
     def status_workflow(workflows)
       if workflows.first.last.is_a?(Array)
         # default mode: use just status

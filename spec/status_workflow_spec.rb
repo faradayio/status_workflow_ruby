@@ -20,6 +20,10 @@ class Pet < ActiveRecord::Base
     'fed' => [:sleep, :run],
     run: [:sleep],
   )
+  before_status_transition do
+    ActiveRecord::Base.clear_active_connections!
+    ActiveRecord::Base.flush_idle_connections!
+  end
 end
 
 class PetAlt < ActiveRecord::Base
