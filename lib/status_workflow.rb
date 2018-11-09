@@ -106,7 +106,7 @@ module StatusWorkflow
           to_statuses.each do |to_status|
             to_status = to_status.to_sym
             memo[to_status] ||= Set.new
-            memo[to_status] << from_status.to_sym
+            memo[to_status] << from_status&.to_sym # support nil or strings/symbols
           end
           memo
         end.tap do |to_from|

@@ -26,6 +26,17 @@ class Pet < ActiveRecord::Base
   end
 end
 
+class PetNull < ActiveRecord::Base
+  self.table_name = 'pets'
+  include StatusWorkflow
+  status_workflow(
+    nil => [:feeding],
+    feeding: [:fed],
+    fed: [:sleep, :run],
+    run: [:sleep],
+  )
+end
+
 class PetAlt < ActiveRecord::Base
   self.table_name = 'pets'
   before_create do
@@ -73,6 +84,7 @@ RSpec.describe StatusWorkflow do
     end
     it "wakes up and eats" do
       expect{pet.enter_feeding!}.not_to raise_error
+      expect(pet.status).to eq('feeding')
     end
     it "sets status_changed_at" do
       expect{pet.enter_feeding!}.to change{pet.reload.status_changed_at}
@@ -149,6 +161,22 @@ RSpec.describe StatusWorkflow do
       t2_succeeded = begin; t2.join; true; rescue; false; end
       expect(t1_succeeded).to be_truthy
       expect(t2_succeeded).to be_falsey
+    end
+  end
+  describe "pet with null status" do
+    let(:pet) { PetNull.create! }
+    before do
+      expect(pet.status).to be_nil
+    end
+    it "wakes up and eats" do
+      expect{pet.enter_feeding!}.not_to raise_error
+      expect(pet.status).to eq('feeding')
+    end
+    it "sets status_changed_at" do
+      expect{pet.enter_feeding!}.to change{pet.reload.status_changed_at}
+    end
+    it "can't just go running when he wakes up" do
+      expect{pet.enter_run!}.to raise_error(/expected.*fed/i)
     end
   end
   describe "alternate column" do
