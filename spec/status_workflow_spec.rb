@@ -92,10 +92,6 @@ RSpec.describe StatusWorkflow do
     it "can't just go running when he wakes up" do
       expect{pet.enter_run!}.to raise_error(/expected.*fed/i)
     end
-    it "can always set error" do
-      expect{pet.enter_error!}.not_to raise_error
-      expect(pet.status).to eq('error')
-    end
     it "won't blow up if you gently request a run" do
       expect{pet.enter_run_if_possible}.not_to raise_error
       expect(pet.status).to eq('sleep')

@@ -109,11 +109,6 @@ module StatusWorkflow
             memo[to_status] << from_status&.to_sym # support nil or strings/symbols
           end
           memo
-        end.tap do |to_from|
-          to_from[:error] = Set.new
-          to_from.each do |to_status, from_statuses|
-            to_from[:error].merge from_statuses
-          end
         end.each do |to_status, from_statuses|
           define_method "#{prefix_}enter_#{to_status}!" do
             send "#{prefix_}status_transition!", nil, to_status

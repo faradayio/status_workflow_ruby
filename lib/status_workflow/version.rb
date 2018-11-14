@@ -1,3 +1,3 @@
 module StatusWorkflow
-  VERSION = '3.0.4'
+  VERSION = '4.0.0'
 end
