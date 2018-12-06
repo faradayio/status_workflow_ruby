@@ -19,7 +19,7 @@ module StatusWorkflow
   end
 
   LOCK_ACQUISITION_TIMEOUT = 8
-  LOCK_EXPIRY = 4
+  LOCK_EXPIRY = 8
   LOCK_CHECK_RATE = 0.2
 
   def status_transition!(intermediate_to_status, final_to_status, prefix = nil)
@@ -45,10 +45,8 @@ module StatusWorkflow
     begin
       # depend on #can_enter_X to reload
       send "#{prefix_}can_enter_#{initial_to_status}?", true
-      raise TooSlow, "#{lock_key} lost lock after checking status" if Time.now - lock_obtained_at > LOCK_EXPIRY
       if intermediate_to_status
         update_columns status_column => intermediate_to_status, status_changed_at_column => Time.now
-        raise TooSlow, "#{lock_key} lost lock after setting intermediate status #{intermediate_to_status}" if Time.now - lock_obtained_at > LOCK_EXPIRY
       end
       # If a block was given, start a heartbeat thread
       if block_given?
@@ -74,7 +72,6 @@ module StatusWorkflow
       # Success!
       if intermediate_to_status
         send "#{prefix_}can_enter_#{final_to_status}?", true
-        raise TooSlow, "#{lock_key} lost lock after checking final status" if Time.now - lock_obtained_at > LOCK_EXPIRY
       end
       update_columns status_column => final_to_status, status_changed_at_column => Time.now
     ensure

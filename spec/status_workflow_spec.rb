@@ -11,14 +11,14 @@ ActiveRecord::Base.connection.execute <<-SQL
 SQL
 class Pet < ActiveRecord::Base
   before_create do
-    self.status ||= 'sleep'
+    self.status ||= 'snooze'
   end
   include StatusWorkflow
   status_workflow(
-    sleep: ['feeding'],
+    snooze: ['feeding'],
     feeding: [:fed],
-    'fed' => [:sleep, :run],
-    run: [:sleep],
+    'fed' => [:snooze, :run],
+    run: [:snooze],
   )
   before_status_transition do
     ActiveRecord::Base.clear_active_connections!
@@ -32,23 +32,23 @@ class PetNull < ActiveRecord::Base
   status_workflow(
     nil => [:feeding],
     feeding: [:fed],
-    fed: [:sleep, :run],
-    run: [:sleep],
+    fed: [:snooze, :run],
+    run: [:snooze],
   )
 end
 
 class PetAlt < ActiveRecord::Base
   self.table_name = 'pets'
   before_create do
-    self.alt_status ||= 'sleep'
+    self.alt_status ||= 'snooze'
   end
   include StatusWorkflow
   status_workflow(
     alt: {
-      sleep: [:feeding],
+      snooze: [:feeding],
       feeding: [:fed],
-      fed: [:sleep, :run],
-      run: [:sleep],
+      fed: [:snooze, :run],
+      run: [:snooze],
     }
   )
 end
@@ -56,22 +56,22 @@ end
 class PetBoth < ActiveRecord::Base
   self.table_name = 'pets'
   before_create do
-    self.status ||= 'sleep'
-    self.alt_status ||= 'sleep2'
+    self.status ||= 'snooze'
+    self.alt_status ||= 'snooze2'
   end
   include StatusWorkflow
   status_workflow(
     nil => {
-      sleep: [:feeding],
+      snooze: [:feeding],
       feeding: [:fed],
-      fed: [:sleep, :run],
-      run: [:sleep],
+      fed: [:snooze, :run],
+      run: [:snooze],
     },
     alt: {
-      sleep2: [:feeding2],
+      snooze2: [:feeding2],
       feeding2: [:fed2],
-      fed2: [:sleep2, :run2],
-      run2: [:sleep2],
+      fed2: [:snooze2, :run2],
+      run2: [:snooze2],
     }
   )
 end
@@ -80,7 +80,7 @@ RSpec.describe StatusWorkflow do
   describe "pet example" do
     let(:pet) { Pet.create! }
     before do
-      expect(pet.status).to eq('sleep')
+      expect(pet.status).to eq('snooze')
     end
     it "wakes up and eats" do
       expect{pet.enter_feeding!}.not_to raise_error
@@ -94,10 +94,10 @@ RSpec.describe StatusWorkflow do
     end
     it "won't blow up if you gently request a run" do
       expect{pet.enter_run_if_possible}.not_to raise_error
-      expect(pet.status).to eq('sleep')
+      expect(pet.status).to eq('snooze')
     end
     it "can set an intermediate status with block" do
-      expect(pet.status).to eq('sleep')
+      expect(pet.status).to eq('snooze')
       pet.status_transition!(:feeding, :fed) do
         expect(pet.status).to eq('feeding')
       end
@@ -124,7 +124,7 @@ RSpec.describe StatusWorkflow do
         pet.enter_feeding!
         pet.enter_fed!
         pet.enter_run!
-        pet.enter_sleep!
+        pet.enter_snooze!
         pet.enter_feeding!
       }.not_to raise_error
     end
@@ -146,7 +146,7 @@ RSpec.describe StatusWorkflow do
       copy2 = Pet.first
       t1 = Thread.new do
         copy1.status_transition!(:feeding, :fed) do
-          sleep 5
+          sleep 9
         end
       end
       t2 = Thread.new do
@@ -178,7 +178,7 @@ RSpec.describe StatusWorkflow do
   describe "alternate column" do
     let(:pet) { PetAlt.create! }
     it "can use an alternate status column" do
-      expect(pet.alt_status).to eq('sleep')
+      expect(pet.alt_status).to eq('snooze')
       pet.alt_status_transition!(:feeding, :fed) do
         expect(pet.alt_status).to eq('feeding')
       end
@@ -202,14 +202,14 @@ RSpec.describe StatusWorkflow do
   describe "2 columns" do
     let(:pet) { PetBoth.create! }
     it "can use an alternate status column" do
-      expect(pet.status).to eq('sleep')
-      expect(pet.alt_status).to eq('sleep2')
+      expect(pet.status).to eq('snooze')
+      expect(pet.alt_status).to eq('snooze2')
       pet.status_transition!(:feeding, :fed) do
         expect(pet.status).to eq('feeding')
-        expect(pet.alt_status).to eq('sleep2')
+        expect(pet.alt_status).to eq('snooze2')
       end
       expect(pet.status).to eq('fed')
-      expect(pet.alt_status).to eq('sleep2')
+      expect(pet.alt_status).to eq('snooze2')
       pet.alt_status_transition!(:feeding2, :fed2) do
         expect(pet.status).to eq('fed')
         expect(pet.alt_status).to eq('feeding2')
@@ -218,7 +218,7 @@ RSpec.describe StatusWorkflow do
     it "uses different locks" do
       pet.status_transition!(:feeding, :fed) do
         expect(pet.status).to eq('feeding')
-        expect(pet.alt_status).to eq('sleep2')
+        expect(pet.alt_status).to eq('snooze2')
         pet.alt_status_transition!(:feeding2, :fed2) do
           expect(pet.status).to eq('feeding')
           expect(pet.alt_status).to eq('feeding2')
